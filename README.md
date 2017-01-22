@@ -1,5 +1,7 @@
 # FriendPaint
 
+[A Windows 32 release is available here.](http://yoanlecoq.com/dl/dev/friendpaint/FriendPaint_Windows32_Portable.zip)
+
 ![Interface](http://yoanlecoq.com/dl/dev/friendpaint/iface.png)
 
 *French ahead!*  
