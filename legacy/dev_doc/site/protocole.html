@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="style.css" type="text/css">
+    <link rel="stylesheet" href="light.css" type="text/css">
+    <link href="highlight_styles/docco.css" rel="stylesheet">
+    <script src="highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+    <meta charset="utf-8">
+    <title>FriendPaint Doc</title>
+  </head>
+  <body>
+    
+    
+    <!-- CONTENT -->
+    
+    <div id="content">
+    	<section id="rules">
+    		<h1 class="section_heading">Protocole de communication Client-Serveur</h1>
+<h1>Spécification</h1>
+
+Les applications FriendPaint tourneront sur les ports suivants, par ordre de préférence : 63360 à 63369.<br><br>
+
+Ce protocole est basé sur les paquets SFML 2.2, qui fonctionnent comme suit :<br><br>
+
+Remplissage : packet << foo << bar;<br>
+Extraction  : packet >> foo >> bar;<br><br>
+
+Avec foo et bar étant de n'importe quel type, y compris des objets de nos classes.<br><br>
+
+Ainsi sera le contenu minimal des paquets :<br>
+{&lt;indicator>, [&lt;payload>]}<br><br>
+
+indicator> est un entier sur 32 bits, qui suffira à l'application pour extraire correctement &lt;payload>.<br>
+Les valeurs possibles de &lt;indicator> seront indiquées par des constantes.<br><br>
+
+
+<h1>Protocole</h1>
+
+User est un utilisateur.<br>
+Serv est le socket du serveur qui communique avec User.<br><br>
+
+
+<h1>Premier contact avec le serveur</h1>
+
+
+  User -> {FP_INIT, &lt;user_name>, &lt;version>}<br><br>
+Si &lt;user_name> est trop long ou &lt;version> non supportée :<br>
+  Serv -> {FP_DENIED, &lt;max_pseudonym_length>, &lt;supported_version>}<br><br>
+Sinon :<br>
+  Serv -> {FP_OK, &lt;infos>}<br>
+Où &lt;infos> est une structure contenant toutes les données que le client a besoin de connaitre.<br>
+
+<ul>
+<b><li>Cas 1 : L'utilisateur veut créer un salon.</li></b>
+
+  User -> {FP_CREATE_LOBBY, &lt;passwd>, &lt;title>, &lt;size> &lt;description>, &lt;slots>, &lt;ask_before_accept>, &lt;layers>}<br>
+Si Serv ne peut pas:<br>
+  Serv -> {FP_DENIED}<br>
+Sinon:<br>
+  Serv -> {FP_OK, &lt;user_color>}<br>
+
+
+<b><li>Cas 2 : L'utilisateur veut rejoindre un salon.</li></b>
+
+  User -> {FP_JOIN_LOBBY, &lt;lobby_id>, &lt;passwd>}<br>
+Si &lt;passwd> est incorrect<br>
+  Serv -> {FP_DENIED}<br>
+Sinon :<br>
+Serv envoie le canevas dans son état actuel.<br>
+  Serv -> {FP_OK, &lt;user_color>, &lt;layers>}<br>
+</ul>
+
+
+<h1>Communication au sein du salon</h1>
+
+
+NB : Les utilisateurs sont identifiés par leur couleur.<br>
+On l'envoie à chaque message pour que le serveur ET les autres clients sachent qui est l'originaire (ou la cible) du message.<br>
+Généralement, les messages comportant &lt;user_color> concernent tout le monde,
+et ceux comportant <controlled_user_color> ne concernent que l'utilisateur ciblé.<br>
+
+<ul>
+
+<b><li>Communication par tchat</li></b>
+
+  User -> {FP_SAY, &lt;text>}<br>
+
+
+<b><li>Gestion des utilisateurs</li></b>
+
+Activer les privilèges administrateur :<br>
+  User -> {FP_GRANT_ADMIN, &lt;controlled_user_color>}<br>
+Donner le statut d'hôte :<br>
+  User -> {FP_GRANT_HOST, &lt;controlled_user_color>}<br>
+S'expulser :<br>
+  User -> {FP_EXIT, &lt;controlled_user_color>}<br>
+Verrou de création de calque :<br>
+  User -> {FP_LOCK_CREATE_LAYER, &lt;controlled_user_color>}<br>
+  User -> {FP_UNLOCK_CREATE_LAYER, &lt;controlled_user_color>}<br>
+
+
+<b><li>Signaux du moteur de peinture</li></b>
+<ul>
+<b><li>Modifier l'outil :</li></b>
+  User -> {FP_SET_TOOL_TYPE, &lt;user_color>, &lt;type>}<br>
+  User -> {FP_SET_TOOL_COLOR, &lt;user_color>, &lt;color>}<br>
+  User -> {FP_SET_TOOL_DIAMETER, &lt;user_color>, &lt;diameter>}<br>
+<b><li>Appliquer l'outil :</li></b>
+  User -> {FP_BEGIN_TOOL_DRAG, &lt;user_color>, &lt;x>, &lt;y>}<br>
+  User -> {FP_STEP_TOOL_DRAG, &lt;user_color>, &lt;x>, &lt;y>}<br>
+  User -> {FP_END_TOOL_DRAG, &lt;user_color>, &lt;x>, &lt;y>}<br>
+<b><li>Créer un nouveau calque :</li></b>
+  User -> {FP_CREATE_LAYER, &lt;user_color>, &lt;layer_name>}<br>
+<b><li>Sélectionner un calque :</li></b>
+  User -> {FP_SELECT_LAYER, &lt;user_color>, &lt;layer_index>}<br>
+<b><li>Renommer un calque :</li></b>
+  User -> {FP_RENAME_LAYER, &lt;user_color>, &lt;layer_index>, &lt;name>}<br>
+<b><li>Supprimer un calque :</li></b>
+  User -> {FP_DELETE_LAYER, &lt;user_color>, &lt;layer_index>}<br>
+<b><li>Déplacer un calque dans la pile (haut ou bas, de &lt;delta> crans) :</li></b>
+  User -> {FP_MOVE_LAYER, &lt;user_color>, &lt;layer_index>, &lt;delta>}<br>
+<b><li>Fusionner vers le bas un calque :</li></b>
+  User -> {FP_MERGE_DOWN_LAYER, &lt;user_color>, &lt;layer_index>}<br>
+<b><li>Modifier verrous d'un calque :</li></b>
+  User -> {FP_LOCK_LAYER, &lt;user_color>, &lt;layer_index>, &lt;locks>}<br>
+</ul>
+</ul>
+
+<h1>Fermeture</h1>
+<ul>
+<b><li>Fermeture normale</li></b>
+
+  User -> {FP_EXIT, &lt;controlled_user_color>}
+
+
+<b><li>Fermeture anormale</li></b>
+
+Serv peut détecter lorsque l'application de l'utilisateur ne s'est pas terminée proprement et entreprendre les actions nécéssaires.
+</ul>
+		<section>
+	</div>
+  </body>
+</html>

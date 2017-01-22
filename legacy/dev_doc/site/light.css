@@ -1,0 +1,6 @@
+html, body {background-color:white;}
+a, a *:not(del) {color:#0099FF/*rgb(80,80,80)*/;}
+a:focus, a:focus *, a:hover, a:hover * {color:black;}
+#bigview, #bigview_description, footer {background-color:rgba(255,255,255,0.5);}
+#bigview a:focus, #bigview a:focus * {color:black;}
+#bigview a:hover, #bigview a:hover * {color:black;}

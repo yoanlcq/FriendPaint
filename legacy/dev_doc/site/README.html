@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="style.css" type="text/css">
+    <link rel="stylesheet" href="light.css" type="text/css">
+    <link href="highlight_styles/docco.css" rel="stylesheet">
+    <script src="highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+    <meta charset="utf-8">
+    <title>FriendPaint Doc</title>
+  </head>
+  <body>
+    <div id="menu">
+      <h1 style="font-size:20px; text-align:center; margin-top:40px;">FriendPaint</h1>
+      <h1 style="font-size:20px; text-align:center; margin-bottom:40px;">Doc</h1>
+      <nav>
+	<a href="#content">Accueil</a>
+	<a href="#linux">Développer sous Linux</a>
+	<a href="#windows">Développer sous Windows</a>
+	<a href="#rules">Ecriture du code source</a>
+      </nav>
+    </div>
+    
+    
+    <!-- CONTENT -->
+    
+    <div id="content">
+      
+      <!-- HOME -->
+      
+      <section id="home">
+	<p>Cette doc est un fourre-tout pour nous trois et modifiable par nous trois.
+          <br>Elle contient des infos sur comment nous allons nous y prendre, pour qu'on parte tous sur les même bases et que ce projet soit fun à réaliser.</p>
+	<br><br>
+	<p><b>17/01:</b> Voici quelques explications concernant la plus récente version de l'analyse. Pas mal de choses ont changé concernant le moteur de peinture et le protocole (c'était un vrai casse-tête) mais maintenant il ne devrait absolument rien manquer.</p>
+	<p>En somme :</p>
+	<ul>
+	  <li>Schéma de la boucle principale du client et du serveur</li>
+	  <li>Classes de GUI + explications</li>
+	  <li>Classes de PaintEngine + beaucoup d'explications</li>
+	  <li>Gantt</li>
+	  <li>Choses à faire</li>
+	</ul>
+	<h1 class="section_heading">Schéma de la boucle principale du client et du serveur</h1>
+	<p>Voici, ci-dessous, un schéma de la boucle principale du client (à gauche) et de celle du serveur :</p>
+	<img src="../analyse/boucle_client.png"><img src="../analyse/boucle_serveur.png">
+	<p>Clarifications :</p>
+	<ul>
+	  <li>Le client tourne sous 2 threads.</li>
+	  <li>Le serveur ne fait pas que relayer les messages. Il entretient un canevas chez lui, pour pouvoir l'envoyer aux nouveaux arrivants.</li>
+	  <li>Le serveur ne relaye les verrous qu'à un seul utilisateur ciblé. Chaque utilisateur stocke chez lui ses propres verrous, et donc...</li>
+	  <li>...Le client vérifie lui-même si l'utilisateur a le droit de faire son action. (Ex. supprimer un calque)</li>
+	  <li>Le client ne voit son action appliquée que lorsque le serveur la lui renvoie. C'est pour être sûr que le canevas soit le même pour tout le monde à tout instant.</li>
+	</ul>
+	<p>Du coup, côté client, le fonctions qui altèrent le canevas (comme createLayer()) devraient juste envoyer un message au serveur. Celui-ci sera renvoyé, le second thread va l'attraper et effectivement l'appliquer.</p>
+	<p>Une question qui pose problème est : Comment va-t-on distinguer les fonctions qui envoient les messages de celles qui les appliquent ?</p>
+
+	<h1 class="section_heading">Classes de GUI + explications</h1>
+	<p><a href="../analyse/GUI.pdf" target="_blank">Diagramme de classes</a></p>
+	<p>Pas besoin de beaucoup d'explications, cette partie est de toute façon quasiment finie. Il y a juste un ingrédient magique qu'il vous faut connaître pour que vous puissiez l'utiliser facilement : Les Insets.</p>
+	<p>En gros, on utilise un conteneur de Widgets, qui peut contenir d'autres conteneurs et d'autres widgets, etc.</p>
+	<p>Comment leur préciser la façon dont on veut qu'ils s'arrangent, sachant que la fenêtre peut être redimensionéne et tout chambouler ? C'est là que les Insets entrent en scène, et c'est assez miraculeux.</p>
+	<p>En somme, les insets, c'est : <b>"Combien de place je laisse à gauche, en haut, à droite et en bas par rapport à mon <i>parent</i> ?"</b></p>
+	<img src="http://docstore.mik.ua/orelly/java/awt/figs/jawt0601.gif">
+	<pre><code class="cpp">TextContainer box;
+box.setInsets(20, 20, 20, 20); //Ses bords se poussent de l'intérieur de 20 pixels par rapport à ceux du parent.
+box.setInsets(0, 0, 0, 0); //Bords égaux à ceux du parent</code></pre>
+	<p>Mais j'ai rajouté autre chose : En même temps que définir les insets, on peut définir une taille fixe pour un Widget. Exemple :</p>
+	<pre><code class="cpp">TextContainer box;
+//<b>Je veux que le box colle en bas de l'écran, s'étale en largeur le long de la fenêtre, mais aie une hauteur fixe de 100 pixels.</b>
+box.setInsets(0, -100, 0, 0);
+//Ici, les 0 indiquent "mes bords collent à gauche, à droite et en bas",
+//Et le -100 indique "je ne colle pas en haut : j'ai une hauteur fixe de 100 pixels."
+//Morale : Coordonnées positives pour spécifier l'espacement par rapport aux bords du parent
+//Coordonnées négatives pour spécifier une taille fixe.
+//Par contre, les insets ne marchent qu'avec une coodonnées négative par axe :
+box.setInsets(0, -100, 0, -100); //Ne pas tenter ça. Le résultat est indéterminé.
+box.setInsets(0, -100, -100, 0); //Ca, ça devrait marcher (carré de 100x100 collé en bas à gauche).</code></pre>
+	<p>C'est comme ça que marche toute l'interface, et ça sauve des vies.</p>
+	<h1 class="section_heading">Classes de PaintEngine + explications</h1>
+	<p><a href="../analyse/PaintEngine.png" target="_blank">Diagramme de classes (c'est une police pixels, soyez sûr de zoomer dessus pour un ratio de 1:1)</a></p>
+	<p>Ce sera clairement le gros de notre boulot. Je l'ai beaucoup (malheureusement) modifié, corrigé, rafistolé, etc, parce que j'avais encore du mal à avoir une vue d'ensemble et certains aspects m'échappaient. Aujourd'hui, maintenant, je pense qu'il est très proche de ce qu'on doit réaliser. Si quoique ce soit n'est pas clair, demandez !</p>
+	<ul>
+	  <li>Séparation en 3 couleurs : En gros, PaintEngine est la partie "Modèle" de FriendPaint (la partie "Vue" étant plutôt GUI). Or, le client et le serveur ne sont pas intéressés par les mêmes données (ex. le client veut savoir quelques calques il laisse visible, mais le serveur s'en fiche). Par contre, on ne veut pas écrire du code doublon.<br>Du coup, le diagramme est bien plus simple quand on le lit comme ça : "Le client et le serveur ont des intérêts différents (leurs classes), mais quelques inétrêts communs (les classes jaunes)."</li>
+	  <li>En fin de compte, j'ai conféré les sockets à la classe User. Ca simplifie beaucoup de choses, et je ne vois pas pourquoi je n'ai pas fait comme ça avant.</li>
+	  <li>Un ClientUser par ClientCanvas. En gros, si on imagine que l'on supporte plusieurs onglets de canevas (à faire en dernier!), je peux m'appeler "Yoon" sur le premier canvas et m'appeler "Foo" sur le deuxième, et avoir une couleur différente. Je suis un utilisateur différent, en fin de compte, selon l'onglet sur lequel je travaille. Du coup, la classe Client "contient" plusieurs Users (avec chacun son canevas) : En réalité, un pour chaque onglet. (et <i>user_index</i> sert à retenir l'onglet courant)<br>Par contre, déjà faire fonctionner le programme avec un seul canevas, ça serait bien.</li>
+	  <li>ClientUser est doté d'un thread. Comme vu avant, c'est le thread qui écoute et applique les ordres du serveur (le thread principal s'occupe de l'entrée utilisateur et de l'envoi de messages au serveur)</li>
+	  <li>Pour la classe Layer : applyBrush() sert juste à tracer un segment entre deux points. Cependant, au moment de tracer chaque pixel du segment, les pixels de <i>brush</i> sont appliqués à la place (i.e additionnés à ceux de l'image). Si <i>erase_mode</i> est vrai, on va seulement prendre l'alpha des pixels de la brosse, et en retirer autant des pixels de l'image.</li>
+	  <li>Client et Server sont des classes qui ne comportent que des attributs et méthodes statiques, et ne sont pas instanciables. C'est un peu comme le pattern Singleton, mais sans le getInstance() inutile à mon goût.</li>
+	  <li>Dans Client et Server : <i>version</i> est une String. C'est pour vérifier si le client et le serveur sont compatibles. Dans notre projet, on peut lui mettre la valeur qu'on veut.</li>
+	  <li>Concernant le reste, je vous invite à <a href="../analyse/Protocole.txt" target="_blank">consulter le protocole</a>, qui je l'espère sera définitif.</li>
+	</ul>
+
+	<h1 class="section_heading">Gantt</h1>
+	<p><a href="../analyse/new_gantt.png" target="_blank">Jetez un oeil !</a></p>
+	<p>Pour un maximum de sécurité, il vaut mieux donner tout ce qu'on a pour finir le projet quelques semaines avant la deadline, et bien exploiter les pauses du midi pour aller en salles machines. On ne le fait pas assez.</p>
+
+	<h1 class="section_heading">Choses à faire <span style="font-size:8px; text-decoration:none;">Oooh non</span></h1>
+	<p><i>Je ne serai pas disponible dimanche parce que je participerai à un évènement.</i></p>
+	<p>Concernant Kostia, on lui montrera simplement où on en est. Il va peut-être s'alarmer en voyant que l'on ne peut pas encore "dessiner", mais le plus difficile (i.e l'analyse) a été fait, et en plus on a quasiment fini la partie interface que j'estimais chronophage. Nos challenges restants sont : Ecrire les classes de PaintEngine, et faire que GUI les manipule.</p>
+	<p>Seb : </p>
+	<ul>
+	  <li>Ecrire les classes IconButton et TextButton, et TextCursor (aussi simple que sur le diagramme + getters et setters).</li>
+	  <li>Ecrire dans un fichier la classe Tool avec getters + setters (cf. PaintEngine)</li>
+	  <li>Ecrire la fonction updateBrush() de Tool. Etant donnés son radius et sa couleur, cette fonction doit assigner à sa brush une sf::Image de taille (radius*2)x(radius*2) contenant le bon <i>disque</i> de pixels colorés.<br>Une fois cela fait, écrire une fonction similaire qui génère un <i>cercle</i> de pixels gris (pourra servir pour le curseur de peinture du client).
+	    <br>Des algorithmes sur internet ou les TP de 1ère année (disques en ascii) pourront servir.
+	  </li>
+	</ul>
+	<p>Val : </p>
+	<ul>
+	  <li>Traduire tes travaux sur les calques et les adapter, en suivant le nommage du diagramme de classes de PaintEngine (pour toute question, n'hésite pas).</li>
+	  <li>Ecrire un programme new_tchat_clt.cpp et new_tchat_srv.cpp <b>(aidés de tchat.cpp bien sûr)</b>, mais qui implémentent le Schéma de la boucle principale du client et du serveur vus en haut.
+	    <br>Ainsi, on les prendra comme bases pour la suite.
+	    <br>Pour faire simple, des utilisateurs pourront être rendus muets (un "verrou de parole"). Conformément aux diagrammes d'activité :
+	    <ul>
+	      <li>Si un utilisateur "mute" ou "unmute" un autre (On imagine qu'il tape "mute Jean-Pierre"), le paquet spécial envoyé n'est relayé par le serveur qu'à l'utilisateur ciblé.</li>
+	    <li>Si un utilisateur parle, son client vérifie s'il n'est pas "mute". Si oui, le paquet est envoyé au serveur, qui le relaye à tous (originaire compris). Sinon, il ne se passe rien.</li>
+	    <li>Le thread principal s'occupe de l'entrée utilisateur, et envoie les paquets (ou non) au serveur. Un 2nd thread au sein du client exécute les ordres du serveur.</li>
+	    </ul>
+	  </li>
+	  <li>Ce qui est bien, c'est qu'ainsi on n'aura pas un tchat bloquant comme l'actuel. Grâce aux threads, on verra en temps réel les gens parler.</li>
+	</ul>
+	<p>Yoan : </p>
+	<ul>
+	  <li>Terminer le concept de l'interface finale, terminer les icônes, puis faire que la programme affiche cette interface.</li>
+	  <li>Ecrire la classe TextField.</li>
+	</ul>
+	<br><br><br><br><br><br><br><br>
+      </section>
+      
+      <section id="linux">
+        <h1 class="section_heading">Mise en place et compilation sous Linux</h1>
+	<p>C'est la façon la plus simple, et elle est très familière.</p>
+	<pre><code class="bash">$ sudo apt-get install -y libsfml-dev g++</code></pre>
+	<p>On ajoute g++ car il peut arriver qu'il ne soit pas présent dans le système. 
+	  Mais en fin de compte, ce n'est rien de moins qu'un gcc lancé avec les options adaptées au c++.</p>
+	<p>Une fois le programme SFML écrit, la compilation n'est pas plus difficile (répertoire courant : FriendPaint):</p>
+	<pre><code class="bash">$ g++ examples/pong.cpp -o bin/linux64/pong -lsfml-graphics -lsfml-audio -lsfml-window -lsfml-system -m64</code></pre>
+	<p>Pour tester Pong, il faut être dans son répertoire courant (afin qu'il trouve certains fichiers).</p>
+	<pre><code class="bash">$ cd bin/linux64<br>$ ./pong</code></pre>
+      </section>
+      
+      <section id="windows">
+	<h1 class="section_heading">Mise en place et compilation sous Windows</h1>
+	<p>Pourquoi utiliser Code::Blocks, Eclipse ou autres...</p>
+	<p>... Quand on peut utiliser le terminal de windows et un éditeur de texte, à l'ancienne ?</p>
+	<p><b>On assume que le système est un 64 bits.</b></p>
+	<h1>Mise en place</h1>
+	<p>Utilisons cmd.exe ! (Sous windows 8, il y a aussi PowerShell) Les commandes sont presque les mêmes que sous Linux, mais :</p>
+	<ul>
+	  <li>Sous Windows, on utilise des Backslashes (ça s'oublie);</li>
+	  <li>Le 'ls' de Windows est 'dir';</li>
+	  <li>Pour changer de drive, il faut entrer sa lettre avec deux points. (Ex. C:)</li>
+          <li>La touche Tab fait comme sous Linux. Très pratique.</li>
+	</ul>
+	<p>Dans un terminal cmd.exe, aller jusqu'au dossier FriendPaint.</p>
+	<p>Maintenant il vous faut installer TDM-GCC. Lancez 'dev_doc\tdm-gcc-4.8.1-3.exe' et suivez les bêtement les instructions.</p>
+	<p>La seule option que vous devez choisir est la suivante, parce qu'on est quand même bientôt en 2015 et qu'on est en 64 bits:</p>
+	<img src="tdm_gcc_cap.png" alt="td_gcc_cap">
+	<p>Je propose ce compilateur parce que la SFML a une distribution exprès pour lui. <span style="font-size:9px;">le dragon est un accident</span></p>
+	<p>Et en parlant de SFML, il n'y a cette fois rien à faire. Tout est dans le dossier FriendPaint, et conçu pour marcher avec TDM-GCC.</p>
+	<h1>Compilation</h1>
+	<p>Un exécutable 64 bits :</p>
+	<pre><code class="cmd">&gt; g++ examples/pong.cpp -o bin/win64/pong -I./include -L./lib/win64 -lsfml-graphics -lsfml-audio -lsfml-window -lsfml-system -m64</code></pre>
+	<p>Un exécutable 32 bits :</p>
+	<pre><code class="cmd">&gt; g++ examples/pong.cpp -o bin/win32/pong -I./include -L./lib/win32 -lsfml-graphics -lsfml-audio -lsfml-window -lsfml-system -m32</code></pre>
+	<p>Sous Windows, pour empêcher qu'une console s'ouvre à l'exécution, rajouter l'option suivante à la compilation :</p>
+	<pre><code class="cmd">-mwindows</code></pre>
+	<p>On précise juste au compilateur où trouver les headers SFML, et au linker où trouver ses fichiers objets.</p>
+	<p>Truc intéressant : Avec la suite TDM-GCC, les slashes sont automatiquement interprétés comme Backslashes.</p>
+	<br>
+	<p>Pour tester Pong, il faut être dans son répertoire courant (afin qu'il trouve certains fichiers).</p>
+	<pre><code class="cmd">&gt; cd bin\win64<br>&gt; pong.exe</code></pre>
+	<br>
+	<p>Vous remarquerez que votre terminal ne connait pas make. Pas de soucis, en réalité il faut l'appeler comme ça :</p>
+	<pre><code class="cmd">&gt; mingw32-make</code></pre>
+	<p>'mingw' veut dire MINimal Gnu for Windows. C'est une adaptaion de gcc, as, ld, make, etc, pour Windows.</p>
+	<p>TDM-GCC en est une autre, mais il n'ont pas refait make. Ils utilisent celui de minGW.</p>
+	<h1>Editeur de texte ?</h1>
+	<p>En voici plusieurs parmi les meilleurs (omettant Vim) :</p>
+	<ul>
+	  <li>Notepad++</li>
+          <li>Emacs 24 windows</li>	
+	  <li>Sublime Text</li>		  
+	</ul>
+      </section>
+      <section id="rules">
+	<h1 class="section_heading">Règles de développement</h1>
+	<h1>Langue</h1>
+	<p>On programme en anglais, pour que le projet puisse continuer à être exploité par n'importe qui par la suite.</p>
+	<h1>Indentation</h1>
+	<ul>
+	  <li><b>Tabulation à 4 espaces</b>, et non le caractère '\0x9' (TAB). Sinon ça part n'importe où selon l'éditeur.<br>
+	    <a target="_blank" href="http://stackoverflow.com/a/70027">Configurer Emacs</a><br>
+	    <a target="_blank" href="http://stackoverflow.com/a/8197841">Configurer Notepad++</a>
+	  </li>
+	</ul>
+	<h1>Espaces de noms</h1>
+	<ul>
+	  <li>On n'utilise jamais les mots-clé 'using' ni 'using namespace'. 
+	    <a target="_blank" href="http://stackoverflow.com/a/1452738">Voir pourquoi.</a></li>
+	</ul>
+	<h1>Fichers headers</h1>
+        <ul>
+          <li>On les nomme avec l'extension <b>.hpp</b>. Un Header typique (<b>ici header.hpp</b>) sera de la forme :
+	    <pre><code class="cpp">#ifndef HEADER_HPP
+#define HEADER_HPP
+
+/* Insérer des déclarations de classe et de prototypes de fonction ici. */
+
+#endif /* HEADER_HPP */</code></pre>
+          </li>
+        </ul>
+	<h1>Variables</h1>
+	<ul>
+	  <li><a href="http://c2.com/cgi/wiki?GlobalVariablesAreBad">Les variables globales, c'est pas bien.</a></li>
+	  <li>On nomme nos variables avec des minuscules séparées par des underscores.<pre><code class="cpp">int my_var;</code></pre></li>
+	  <li>Les constantes '#define' ou 'const' écrites en majucules.<pre><code class="cpp">const int MY_CONST = 42;<br>#define YOUR_CONST 13</code></pre></li>
+	  <li>Pour un tableau, on le nomme par le pluriel des éléments qu'il représente :<br>
+	    <pre><code class="cpp">unsigned phone_numbers[8];<br>std::string thread_arguments[16];</code></pre></li>
+	  <li>Lorsqu'on veut un tableau extensible (dont on veut facilement augmenter/diminuer la taille), on utilise un std::vector.<br>
+	    <pre><code class="cpp">std::vector&lt;int&gt; my_telephones;</code></pre></li>
+	</ul>
+	<h1>Fonctions/Méthodes</h1>
+	<ul>
+	  <li>On les nomme en camelCase. 
+	    <pre><code class="cpp">void myFunction();<br>int anotherCoolFunction();</code></pre></li>
+	</ul>
+	<h1>Classes</h1>
+	<ul>
+	  <li>On les nomme en CamelCase en commençant par une capitale. 
+	    <pre><code class="cpp">class HautParleur;</code></pre></li>
+	</ul>
+	<h1>Nouveautés du C++</h1>
+        <ul>
+	  <li><b>Références.</b> En C++, on dispose de variables de pointeur, de valeur, mais aussi de <b>références</b>.
+	    <pre><code class="cpp">#include &lt;cstdlib&gt;
+      
+void echange(int &amp;a, int &amp;b) {
+    int tmp = a;
+    a = b;
+    b = tmp;
+}
+
+int main(int argc, char *argv[]) {
+    int a = 42, b = 13;
+    echange(a, b);
+    /* a vaut 13 et b vaut 42 */
+    exit(EXIT_SUCCESS);
+}</code></pre>
+	    <pre><code class="cpp">int&amp; ma_variable; /* Déclaration d'une variable de référence. */
+int&amp; getVar(); /* Ce getter renvoie une référence vers un attribut (et non une copie de sa valeur).*/
+/* Lorsqu'on la modifiera, l'attribut sera modifié, comme avec un pointeur. */</code></pre>
+	  </li>
+	  <li><b>Allocation dynamique. Fini les malloc() et free().</b> En C++, nous avons les opérateurs new et delete. <b>Ne pas oublier que new renvoie un pointeur, pas comme en Java.</b></li>
+	  <li>On peut instancier un objet sans qu'il soit dynamique. (i.e sans <b>new</b>)
+	    <pre><code class="cpp">#include &lt;cstdlib&gt;
+#include &lt;SFML/System.hpp&gt;
+      
+void threadFunc(void *arg) {}
+
+int main(int argc, char *argv[]) {
+    char c;
+    sf::Thread my_thread(&amp;threadFunc, &amp;c); /* Comme une variable normale, elle sera détruite à la fin de la fonction. */
+    sf::Thread my_thread2 = sf::Thread(&amp;threadFunc, &amp;c); /* Ca marche aussi. Pas besoin de new. */
+    exit(EXIT_SUCCESS);
+}</code></pre>
+	  </li>
+	</ul>
+      </section>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,135 @@
+===< INTRODUCTION >===
+
+
+Notre projet, baptisé FriendPaint, vise à offrir un outil d'édition d'image, axé dessin/peinture, offrant la possibilité à plusieurs utilisateurs de travailler sur un même canevas en même temps, en portant une certaine attention aux droits de chaque utilisateur (contrairement à ce que son nom suggère, FriendPaint suppose que les utilisateurs ne se font pas forcément confiance).
+
+C'est un besoin auquel quelques outils ont tenté de répondre, mais cependant :
+-> Certains ne sont pas cross-platform (Ex. OpenCanvas 1.1 seulement sur Windows);
+-> Certains sont des applis web, ce qui veut dire qu'Internet est requis;
+-> Parmi ceux-ci, la plupart impose de créer un compte, ce que nous jugeons non nécéssaire;
+-> Parmi ceux-ci, la plupart impose de dessiner sur un grand canevas visible par tous (Ex. Drawball, Drawsum)
+-> La majeure patie est conçue pour jouer au Pictionary ou, tout simplement, est trop restrictive (Ex. iScribble, iSketch).
+
+Nous avons découvert Drawpile peu de temps après la validation du sujet du projet, qui répond correctement à notre besoin.
+
+Aujourd'hui, notre objectif est de concevoir FriendPaint dès le départ pour qu'il soit très facilement extensible et puisse évoluer en se distinguant de Drawpile.
+FriendPaint sera livré avec un autre exécutable nommé FriendPaintServer, dont le nom est auto-explicatif et les spécificités détaillées dans les sections suivantes.
+
+
+===< FONCTIONNALITES >===
+
+
+I - Notes
+
+Pour ce qui suit, il est admis que chaque action est rendue possible par un élément d'interface adéquat, et/ou le clavier, et/ou la souris.
+Les fonctionnalités du produit final inclueront, mais ne seront pas limitées à, celles présentées ici.
+
+
+II - Utilisation en solo
+
+L'utilisateur doit pouvoir créer un canevas, en spécifiant son titre, ainsi que largeur/hauteur en pixels. Des modèles prédéfinis (comme A4) seront proposés.
+
+Le canevas comportera, à sa création, un seul calque, rempli de couleur alpha (transparente) représentée par un damier gris.
+
+Indépendamment du calque actif, l'utilisateur pourra changer sa couleur de peinture, en changeant ses valeurs RGB.
+
+L'utilisateur pourra appliquer les outils suivants sur le calque actif :
+-> Crayon, qui trace une suite de disques de pixels opaques, de la couleur de peinture. Le diamètre du disque est modifiable : c'est un entier supérieur ou égal à 1 exprimé en pixels.
+-> Gomme, qui se comporte exactement comme son ami Crayon, mais qui trace de l'alpha.
+
+L'utilisateur pourra zoomer/dézoomer la vue sur le canevas (cette fonctionnalité est déjà implémentée dans un prototype).
+
+L'utilisateur pourra, sur le canevas actif :
+(IMPORTANT : Les éléments marqués (*) sont utiles UNIQUEMENT lors de la prise de contrôle des autres utilisateurs pendant l'utilisation collaborative.)
+-> (*) Activer les privilèges administrateur (activé et immuable en solo);
+-> (*) Activer le statut d'hôte (activé et immuable en solo);
+-> (*) Fermer le canevas (également s'expulser);
+-> Créer un nouveau calque;
+-> (*) Verrouiller/déverrouiller le verrou de création de calque (empêche de créer des calques);
+-> Montrer/Cacher un calque;
+-> Sélectionner un calque (en faire son calque actif);
+-> Renommer, Supprimer, Monter/Descendre dans la pile, ou Fusionner vers le bas son calque actif;
+-> Verrouiller/déverrouiller les verrous d'un calque :
+---> Verrou de modification (empêche de modifier le contenu ET verrouille les verrous suivants);
+---> (*) Verrou de renommage (empêche de renommer le calque);
+---> Verrou de suppression (empêche de supprimer le calque);
+
+
+III - Utilisation collaborative
+
+Dans cette section, précisons certains termes qui seront souvent utilisés :
+-> Un "salon" est une structure englobant un canevas, et tous les utilisateurs qui travaillent dessus.
+-> Le créateur d'un salon est référé comme "hôte" de ce salon. Celui-ci dispose automatiquement des privilèges administrateur;
+-> Les autres utilisateurs qui y entrent sont référés comme "invités";
+-> Les pseudonymes ne peuvent pas contenir de caractères blancs.
+
+
+Cas 1 : Etre hôte
+
+Si le canevas actif n'est pas déjà propre à un salon, l'utilisateur pourra créer un salon avec ce canevas. Il spécifera :
+-> Son pseudonyme;
+-> L'adresse (avec port, si ce n'est pas le défaut) d'une machine exécutant une instance de FriendPaintServer (locale ou non).
+
+Une fois le serveur contacté, s'il est compatible avec cette version de FriendPaint et que la longueur du pseudonyme lui convient, il répondra en précisant ses limites internes, propres aux attributs que l'utilisateur spécifiera ensuite :
+-> Un mot de passe d'accès au salon (pouvant être vide);
+-> Une courte description du salon (pouvant être vide);
+-> Le nombre de places du salon;
+-> Les verrous "d'accueil", appliqués aux invités dès leur entrée;
+-> S'il souhaite être sollicité pour accepter chaque invité ou non;
+l'application ne proposera pas de créer le salon tant que ces attributs ne respectent pas les limites du serveur.
+
+Une fois le salon créé, une pastille de couleur sera assignée à l'hôte, qui pourra reprendre son travail sur le canevas, et être averti des entrées d'invités dans le salon.
+
+
+Cas 2 : Etre invité
+
+L'utilisateur peut à tout moment décider de rejoindre un salon.
+Il spécifiera :
+-> Son pseudonyme;
+-> L'adresse et port (défaut si omis) d'une machine exécutant une instance de FriendPaintServer.
+
+Une fois le serveur contacté, s'il est compatible avec cette version de FriendPaint et que la longueur du pseudonyme lui convient, il répondra avec la liste des salons qu'il dessert.
+L'utilisateur choisira alors le salon auquel il souhaite se connecter. 
+S'il reste au moins une place, un mot de passe lui sera demandé (pouvant être vide).
+Si le mot de passe est correct et si l'hôte accepte (automatiquement ou non), le canevas est téléchargé, puis devient le canevas actif.
+L'utilisateur, maintenant un invité, se voit assigner une pastille de couleur.
+Les verrous "d'accueil" sont alors téléchargés et appliqués sur le canevas.
+Enfin, l'invité peut travailler sur le canevas.
+
+
+Principes d'un salon :
+
+Pour chaque utilisateur, le comportement de l'application est le même qu'en solo, avec des détails supplémentaires :
+
+Lorsqu'un utilisateur U applique un outil, les autres voient le curseur de U sur le canevas, avec sa pastille et son pseudonyme.
+Chaque action de U sera appliqués sur le canevas chez chaque utilisateur.
+
+Les utilisateurs pourront discuter ("Chatter") entre eux par le biais d'un widget prévu à cet effet.
+Ce widget annoncera lorsqu'un utilisateur entre ou sort du salon.
+
+Un utilisateur doté des privilèges administrateur (nommons-le R) gérera facilement les privilèges des non-administrateurs en agissant sur leurs verrous.
+Pour que ce soit simple, R disposera d'une liste compacte des pastilles de chaque utilisateur. 
+Toutes les actions de verrouillage et d'activation (et même l'auto-expulsion) que R effectuera après avoir sélectionné une pastille seront appliquées de manière immuable à l'utilisateur correspondant.
+Pour reprendre son travail, R n'aura plus qu'à sélectionner sa propre pastille.
+Ainsi, cela ne requiert aucun changement dans l'interface, mais simplement une indication.
+
+Côté serveur, un salon sans hôte sera immédiatement détruit et les invités expulsés.
+Si l'hôte veut que le salon continue de vivre en son absence, il devra donner son statut d'hôte à un invité avant de quitter.
+Ainsi, l'hôte fermera le salon en fermant son canevas (ou en fermant l'application). 
+Les invités pourront sortir du salon en fermant leur canevas (ou en fermant l'application).
+
+
+
+===< CONTRAINTES MATERIELLES >===
+
+Nous développerons en C++ (avec le standard C++11, supporté par GCC), avec la bibliothèque SFML 2.1, pour les raisons suivantes :
+-> C'est une bibliothèque graphique, de fenêtrage, système (gestion du temps avancée, threads, mutexes) et de réseau (sockets, transfert de paquets).
+-> Le tout étant indépendant de l'OS, et open-source.
+-> Elle est moins longue (et de fait, moins risquée) à apprendre, comparée aux grands Qt, GTK, etc. Cela facilitera également les contributions futures;
+-> Elle exploite au mieux le hardware, grâce à des appels OpenGL en interne;
+
+Le seul inconvénient est que nous allons devoir programmer nos widgets nous-même. Cependant, cela nous offre une marge de manoeuvre complète sur le design de l'interface, laquelle restera visuellement consistante quel que soit l'OS.
+Un autre problème est que SFML ne permet pas d'utiliser IPv6. Son développeur principal pense qu'il est trop tôt pour en faire une priorité, mais compte bien l'implémenter dans une future version.
+
+FriendPaint et FriendPaintServer seront développés pour Windows et Linux, 64 bits, tout au long du projet.
+A terme, ils pourront également être compilés pour 32 bits et pour Mac OS X sans modifier le code source.

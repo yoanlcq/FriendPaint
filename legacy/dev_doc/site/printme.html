@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="style.css" type="text/css">
+    <link rel="stylesheet" href="light.css" type="text/css">
+    <link href="highlight_styles/docco.css" rel="stylesheet">
+    <script src="highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+    <meta charset="utf-8">
+    <title>FriendPaint Doc</title>
+  </head>
+  <body>
+    
+    
+    <!-- CONTENT -->
+    
+    <div id="content">
+      
+      
+      <section id="rules">
+	<h1 class="section_heading">Annexe : Règles de développement</h1>
+	<h1>Langue</h1>
+	<p>On écrit notre code en anglais, pour que le projet puisse continuer à être exploité par la suite à un niveau international.</p>
+	<h1>Indentation</h1>
+	<ul>
+	  <li><b>Tabulation à 4 espaces</b>, et non le caractère '\0x9' (TAB).<br>
+	  </li>
+	</ul>
+	<h1>Espaces de noms</h1>
+	<ul>
+	  <li>On n'utilise jamais les mots-clé 'using' ni 'using namespace'.></li>
+	</ul>
+	<h1>Fichers headers</h1>
+        <ul>
+          <li>On les nomme avec l'extension <b>.hpp</b>. Un Header typique (<b>ici header.hpp</b>) sera de la forme :
+	    <pre><code class="cpp">#ifndef HEADER_HPP
+#define HEADER_HPP
+
+/* Insérer des déclarations de classe 
+   et de prototypes de fonction ici. */
+
+#endif /* HEADER_HPP */</code></pre>
+          </li>
+        </ul>
+	<h1>Variables</h1>
+	<ul>
+	  <li>On nomme nos variables avec des minuscules séparées par des underscores.<pre><code class="cpp">int my_var;</code></pre></li>
+	  <li>Les constantes '#define' ou 'const' écrites en majucules.<pre><code class="cpp">const int MY_CONST = 42;<br>#define YOUR_CONST 13</code></pre></li>
+	  <li>On nomme un tableau par le pluriel des éléments qu'il représente :<br>
+	    <pre><code class="cpp">unsigned phone_numbers[8];<br>std::string thread_arguments[16];</code></pre></li>
+	  <li>Lorsqu'on veut un tableau extensible (dont on veut facilement augmenter/diminuer la taille), on utilise un std::vector.<br>
+	    <pre><code class="cpp">std::vector&lt;int&gt; my_telephones;</code></pre></li>
+	</ul>
+	<h1>Fonctions/Méthodes</h1>
+	<ul>
+	  <li>On les nomme en camelCase. 
+	    <pre><code class="cpp">void myFunction();<br>int anotherCoolFunction();</code></pre></li>
+	</ul>
+	<h1>Classes</h1>
+	<ul>
+	  <li>On les nomme en CamelCase en commençant par une capitale. 
+	    <pre><code class="cpp">class HautParleur;</code></pre></li>
+	</ul>
+	<h1>Nouveautés du C++</h1>
+        <ul>
+	  <li><b>Références.</b> En C++, on dispose de variables de pointeur, de valeur, mais aussi de <b>références</b>.
+	    <br>Les accesseurs renverront une référence sur un objet seulement si un retour de valeur n'est pas pratique ou co&ucirc;teux.
+	    <pre><code class="cpp">
+/* Déclaration d'une variable de référence. */
+int&amp; ma_variable; 
+/* Ce getter renvoie une référence vers un attribut
+   (et non une copie de sa valeur). */
+int&amp; getVar();
+/* Lorsqu'on la modifiera, l'attribut sera modifié, 
+   comme avec un pointeur. */</code></pre>
+	  </li>
+	  <li><b>On n'utilise pas malloc() et free().</b> En C++, nous avons les opérateurs <b>new</b> et <b>delete</b>.</li>
+	  <li>On peut instancier un objet sans qu'il soit dynamique. (i.e sans <b>new</b>)
+	    <br>Ainsi, tant que possible, <b>nous ne ferons pas d'allocation dynamique.</b>
+	    <pre><code class="cpp">#include &lt;cstdlib&gt;
+#include &lt;SFML/System.hpp&gt;
+      
+void threadFunc(void *arg) {}
+
+int main(int argc, char *argv[]) {
+    char c;
+    /* Comme une variable normale, 
+       elle sera détruite à la fin de la fonction. */
+    sf::Thread my_thread(&amp;threadFunc, &amp;c);
+    /* Ca marche aussi. Pas besoin de new. */
+    sf::Thread my_thread2 = sf::Thread(&amp;threadFunc, &amp;c);
+    exit(EXIT_SUCCESS);
+}</code></pre>
+	  </li>
+	</ul>
+      </section>
+    </div>
+  </body>
+</html>
